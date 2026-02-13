@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Security Reference Architecture — Diagram Generator</title>
+  <style>
+    :root {
+      --bg: #1a1d23;
+      --surface: #252830;
+      --border: #3d424d;
+      --text: #e6e8ec;
+      --muted: #8b909a;
+      --accent: #5c9ead;
+      --accent-hover: #7ab8c7;
+      --error: #c75c6f;
+      --success: #6ab187;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 24px;
+      min-height: 100vh;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: var(--text);
+    }
+    .subtitle {
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-bottom: 24px;
+    }
+    label {
+      display: block;
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    textarea {
+      width: 100%;
+      min-height: 160px;
+      padding: 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 0.95rem;
+      resize: vertical;
+    }
+    textarea::placeholder { color: var(--muted); }
+    .row {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+    .field {
+      flex: 1;
+      min-width: 180px;
+    }
+    select {
+      width: 100%;
+      padding: 10px 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 0.95rem;
+    }
+    .actions {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-top: 20px;
+    }
+    button {
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+    }
+    button.primary {
+      background: var(--accent);
+      color: var(--bg);
+    }
+    button.primary:hover { background: var(--accent-hover); }
+    button.secondary {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    button.secondary:hover { border-color: var(--accent); color: var(--accent); }
+    a.download {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      background: var(--success);
+      color: var(--bg);
+      text-decoration: none;
+      border-radius: 8px;
+      font-weight: 500;
+    }
+    a.download:hover { opacity: 0.9; }
+    .message {
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+    }
+    .message.error { background: rgba(199, 92, 111, 0.15); color: var(--error); }
+    .message.info { background: rgba(92, 158, 173, 0.15); color: var(--accent); }
+    #status { margin-top: 16px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Security Reference Architecture</h1>
+    <p class="subtitle">Describe your architecture in text → get a draw.io diagram (.drawio). Open the file in <a href="https://app.diagrams.net/" target="_blank" rel="noopener" style="color: var(--accent);">diagrams.net</a>.</p>
+
+    <label for="input">Architecture description</label>
+    <textarea id="input" placeholder="e.g. Users on the internet hit an API gateway in the DMZ. The gateway authenticates with an identity provider and forwards requests to internal app services. Applications use a database. WAF and TLS are used."></textarea>
+
+    <div class="row">
+      <div class="field">
+        <label for="profile">Diagram profile</label>
+        <select id="profile">
+          <option value="Generic Security Reference">Generic Security Reference</option>
+          <option value="Bank Security Reference">Bank Security Reference</option>
+          <option value="Cloud AI Architecture">Cloud AI Architecture</option>
+          <option value="Vendor Integration">Vendor Integration</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="detail">Detail level</label>
+        <select id="detail">
+          <option value="lite">Lite</option>
+          <option value="standard" selected>Standard</option>
+          <option value="threat-model">Threat model</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button type="button" class="primary" id="generate">Generate (.drawio)</button>
+      <button type="button" class="secondary" id="loadSample">Load sample input</button>
+      <span id="downloadWrap" style="display: none;">
+        <a class="download" id="download" href="#" download="security_architecture.drawio">Download .drawio</a>
+      </span>
+    </div>
+
+    <div id="status"></div>
+  </div>
+
+  <script>
+    const input = document.getElementById('input');
+    const profile = document.getElementById('profile');
+    const detail = document.getElementById('detail');
+    const generateBtn = document.getElementById('generate');
+    const loadSampleBtn = document.getElementById('loadSample');
+    const downloadWrap = document.getElementById('downloadWrap');
+    const downloadLink = document.getElementById('download');
+    const statusEl = document.getElementById('status');
+
+    function setStatus(msg, type) {
+      statusEl.innerHTML = msg ? `<div class="message ${type}">${msg}</div>` : '';
+    }
+
+    loadSampleBtn.addEventListener('click', async () => {
+      try {
+        const r = await fetch('/api/sample');
+        const d = await r.json();
+        input.value = d.text || '';
+        setStatus('Sample loaded.', 'info');
+      } catch (e) {
+        setStatus('Could not load sample.', 'error');
+      }
+    });
+
+    generateBtn.addEventListener('click', async () => {
+      setStatus('');
+      downloadWrap.style.display = 'none';
+      generateBtn.disabled = true;
+      try {
+        const res = await fetch('/api/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            text: input.value,
+            profile: profile.value,
+            detail_level: detail.value,
+            use_llm: null
+          })
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          const errors = err.detail?.errors || [res.statusText];
+          setStatus(errors.join(' '), 'error');
+          return;
+        }
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        downloadLink.href = url;
+        downloadLink.download = 'security_architecture.drawio';
+        downloadWrap.style.display = 'inline-flex';
+        setStatus('Diagram generated. Click Download .drawio and open in diagrams.net.', 'info');
+      } catch (e) {
+        setStatus('Request failed: ' + e.message, 'error');
+      } finally {
+        generateBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+Generic security reference architecture:
+
+- Users and clients on the internet access the system via a web application or API.
+- Traffic passes through a WAF and an API gateway in the DMZ.
+- The API gateway authenticates with an identity provider (e.g. OAuth2) and forwards requests to internal application services.
+- Application services run in an internal or cloud zone and connect to databases and caches over TLS (mTLS where required).
+- Logs and telemetry are sent to a central logging service.
+- No proprietary organization names; use generic labels such as "API Gateway", "Identity Provider", "Application Service", "Database".
